@@ -1,0 +1,22 @@
+# --- GLOBAL IGNORES ---
+# Secrets
+*.tfvars
+*.tfvars.json
+*.pem
+*.key
+.env
+
+# AWS
+.aws/
+
+# Build Artifacts
+target/
+build/
+dist/
+*.jar
+*.war
+
+# Terraform State (Local)
+*.tfstate
+*.tfstate.backup
+.terraform/
