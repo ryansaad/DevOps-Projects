@@ -31,6 +31,7 @@ resource "aws_iam_role_policy" "codeartifact_policy" {
           "codeartifact:GetRepositoryEndpoint",
           "codeartifact:ReadFromRepository",
           "codeartifact:PublishPackageVersion",
+          "codeartifact:PutPackageMetadata",
           "sts:GetServiceBearerToken"
         ]
         Resource = "*"
