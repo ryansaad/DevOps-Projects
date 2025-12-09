@@ -15,3 +15,8 @@ output "codeartifact_domain" {
 output "codeartifact_owner" {
   value = module.artifact.domain_owner
 }
+
+output "alb_dns_name" {
+  description = "The public URL of the Load Balancer"
+  value       = module.alb.alb_dns_name
+}

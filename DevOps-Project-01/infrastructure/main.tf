@@ -54,29 +54,51 @@ module "rds" {
 }
 
 # Application Load Balancer Module
-# module "alb" {
-#  source = "./modules/alb"
+module "alb" {
+  source = "./modules/alb"
 
- # environment     = var.environment
- # vpc_id         = module.vpc.vpc_id
- # public_subnets = module.vpc.public_subnet_ids
-# }
+  environment        = var.environment
+  vpc_id             = module.vpc.vpc_id
+  subnets            = module.vpc.public_subnet_ids  # <--- Changed from 'public_subnets'
+  security_group_ids = [module.security.alb_security_group_id]
+}
 
 # Auto Scaling Group Module
-# module "asg" {
-#  source = "./modules/asg"
+module "asg" {
+  source = "./modules/asg"
 
-#  environment         = var.environment
-#  vpc_id             = module.vpc.vpc_id
-#  private_subnet_ids = module.vpc.private_subnet_ids
-#  security_group_ids = [module.security.app_security_group_id]
-#  target_group_arns  = [module.alb.target_group_arn]
-#  instance_type      = var.instance_type
-#  key_name           = var.key_name
-#  min_size          = var.asg_min_size
-#  max_size          = var.asg_max_size
-#  desired_capacity  = var.asg_desired_capacity
-# }
+  environment         = var.environment
+  instance_type       = var.instance_type
+  key_name            = var.key_name
+  
+  # Networking & Security
+  security_group_ids  = [module.security.app_security_group_id]
+  private_subnet_ids  = module.vpc.private_subnet_ids
+  
+  # Scaling Config
+  min_size            = var.asg_min_size
+  max_size            = var.asg_max_size
+  desired_capacity    = var.asg_desired_capacity
+
+  # Load Balancer Connection (Where traffic comes from)
+  target_group_arns   = [module.alb.target_group_arn]
+
+  # Artifact Warehouse (Where code comes from)
+  codeartifact_domain = module.artifact.domain
+  codeartifact_owner  = module.artifact.domain_owner
+  codeartifact_url    = module.artifact.repository_endpoint
+
+
+  # PASS THE DATABASE DETAILS HERE
+  project_name      = var.project_name
+ 
+  
+  # The Fix: Pointing to the database that ACTUALLY exists
+  db_endpoint       = module.rds.rds_endpoint
+  db_name           = "javaapp"    # <--- CHANGE THIS from "webappdb" to "javaapp"
+  db_user           = var.db_username
+  db_password       = var.db_password
+}
 
 # CloudWatch Module
 # module "monitoring" {
