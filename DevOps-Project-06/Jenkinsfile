@@ -64,16 +64,20 @@ environment {
                     def properties = "buildid=${env.BUILD_ID},commitid=${GIT_COMMIT}";
             
                     def uploadSpec = """{
-                        "files": [
-                          {
-                            "pattern": "DevOps-Project-06/jarstaging/(*)", 
-                                "target": "libs-release-local/{1}",
-                                "flat": "false",
-                                "props" : "${properties}",
-                                "exclusions": [ "*.sha1", "*.md5"]
-                          }
-                        ]
-                    }"""
+                "files": [
+                  {
+                    // ⚠️ CHANGE 1: Only look for YOUR project files (com/satish/...)
+                    "pattern": "DevOps-Project-06/jarstaging/(com/satish/demo-workshop/.*)", 
+                    
+                    // ⚠️ CHANGE 2: Map them to the root of your JFrog repo
+                    "target": "libs-release-local/{1}",
+                    
+                    "flat": "false",
+                    "props" : "${properties}",
+                    "exclusions": [ "*.sha1", "*.md5"]
+                  }
+                ]
+            }"""
             
                     // ⚠️ Verify "libs-release-local" matches the exact name of the repo you created in JFrog!
             
