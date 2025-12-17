@@ -1,5 +1,5 @@
 def registry = 'https://trialrpjcof.jfrog.io'
-def imageName = 'satishk.jfrog.io/satish-docker-local/sample_app'
+def imageName = 'trialrpjcof.jfrog.io/docker-local/sample-app'
 def version   = '2.1.2'
 pipeline {
     agent {
@@ -89,11 +89,13 @@ environment {
 
     stage(" Docker Build ") {
       steps {
+          dir('DevOps-Project-06') {
         script {
            echo '<--------------- Docker Build Started --------------->'
            app = docker.build(imageName+":"+version)
            echo '<--------------- Docker Build Ends --------------->'
         }
+      }
       }
     }
 
@@ -103,6 +105,7 @@ environment {
                echo '<--------------- Docker Publish Started --------------->'  
                 docker.withRegistry(registry, 'jfrog_cred'){
                     app.push()
+                    app.push("latest")
                 }    
                echo '<--------------- Docker Publish Ended --------------->'  
             }
@@ -117,15 +120,15 @@ environment {
     //     }
     // }
 
-stage(" Deploy ") {
-       steps {
-         script {
-            echo '<--------------- Helm Deploy Started --------------->'
-            sh 'helm install sample-app sample-app-1.0.1'
-            echo '<--------------- Helm deploy Ends --------------->'
-         }
-       }
-}  
+// stage(" Deploy ") {
+//        steps {
+//          script {
+//             echo '<--------------- Helm Deploy Started --------------->'
+//             sh 'helm install sample-app sample-app-1.0.1'
+//             echo '<--------------- Helm deploy Ends --------------->'
+//          }
+//        }
+// }  
 }
 }
 
