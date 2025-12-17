@@ -116,6 +116,7 @@ environment {
         steps {
             dir('DevOps-Project-06') {
             script {
+                sh 'chmod +x ./deploy.sh'
                sh './deploy.sh'  
             }
         }
