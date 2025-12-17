@@ -114,9 +114,11 @@ environment {
 
     stage (" Deploy "){
         steps {
+            dir('DevOps-Project-06') {
             script {
                sh './deploy.sh'  
             }
+        }
         }
     }
 
