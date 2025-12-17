@@ -48,14 +48,14 @@ pipeline {
                 }
             }
         }
-        stage('OWASP FS Scan') {
-            steps {
-                dir('DevOps-Project-09/Netflix-clone') {
-                    dependencyCheck additionalArguments: '--scan ./ --disableYarnAudit --disableNodeAudit', odcInstallation: 'DP-Check'
-                    dependencyCheckPublisher pattern: '**/dependency-check-report.xml'
-                }
-            }
-        }
+        // stage('OWASP FS Scan') {
+        //     steps {
+        //         dir('DevOps-Project-09/Netflix-clone') {
+        //             dependencyCheck additionalArguments: '--scan ./ --disableYarnAudit --disableNodeAudit', odcInstallation: 'DP-Check'
+        //             dependencyCheckPublisher pattern: '**/dependency-check-report.xml'
+        //         }
+        //     }
+        // }
         stage('Trivy FS Scan') {
             steps {
                 dir('DevOps-Project-09/Netflix-clone') {
@@ -98,7 +98,7 @@ pipeline {
             emailext attachLog: true,
                 subject: "'${currentBuild.result}'",
                 body: "Project: ${env.JOB_NAME} - Build #${env.BUILD_NUMBER}",
-                to: 'rutik@gmail.com', // Update this to your real email if needed
+                to: 'ryansaad85@gmail.com', // Update this to your real email if needed
                 attachmentsPattern: 'trivyfs.txt,trivyimage.txt'
         }
     }
