@@ -1,4 +1,4 @@
-def registry = 'https://satishk.jfrog.io'
+def registry = 'https://trialrpjcof.jfrog.io'
 def imageName = 'satishk.jfrog.io/satish-docker-local/sample_app'
 def version   = '2.1.2'
 pipeline {
@@ -55,27 +55,32 @@ environment {
             }
         }
          stage("Jar Publish") {
-        steps {
-            script {
+            steps {
+                script {
                     echo '<--------------- Jar Publish Started --------------->'
-                     def server = Artifactory.newServer url:registry+"/artifactory" ,  credentialsId:"jfrog_cred"
-                     def properties = "buildid=${env.BUILD_ID},commitid=${GIT_COMMIT}";
-                     def uploadSpec = """{
-                          "files": [
-                            {
-                              "pattern": "jarstaging/(*)",
-                              "target": "maven-libs-release-local/{1}",
-                              "flat": "false",
-                              "props" : "${properties}",
-                              "exclusions": [ "*.sha1", "*.md5"]
-                            }
-                         ]
-                     }"""
-                     def buildInfo = server.upload(uploadSpec)
-                     buildInfo.env.collect()
-                     server.publishBuildInfo(buildInfo)
-                     echo '<--------------- Jar Publish Ended --------------->'  
+                    // This connects using the URL and Credential ID directly
+                    def server = Artifactory.newServer url: registry + "/artifactory", credentialsId: "jfrog_cred"
             
+                    def properties = "buildid=${env.BUILD_ID},commitid=${GIT_COMMIT}";
+            
+                    def uploadSpec = """{
+                        "files": [
+                          {
+                            "pattern": "DevOps-Project-06/jarstaging/(*)", 
+                                "target": "libs-release-local/{1}",
+                                "flat": "false",
+                                "props" : "${properties}",
+                                "exclusions": [ "*.sha1", "*.md5"]
+                          }
+                        ]
+                    }"""
+            
+                    // ⚠️ Verify "libs-release-local" matches the exact name of the repo you created in JFrog!
+            
+                def buildInfo = server.upload(uploadSpec)
+                buildInfo.env.collect()
+                server.publishBuildInfo(buildInfo)
+                echo '<--------------- Jar Publish Ended --------------->'  
             }
         }   
     }
