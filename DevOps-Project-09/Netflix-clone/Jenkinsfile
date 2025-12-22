@@ -1,0 +1,105 @@
+pipeline {
+    agent any
+    tools {
+        jdk 'jdk17'
+        nodejs 'node16'
+    }
+    environment {
+        SCANNER_HOME = tool 'sonar-scanner'
+        // FIXED: Using your Docker Hub username
+        DOCKER_IMAGE = 'ryansaad85/netflix:latest' 
+        TMDB_API_KEY = 'AJ7AYe14eca3e76864yah319b92' 
+    }
+    stages {
+        stage('Clean Workspace') {
+            steps {
+                cleanWs()
+            }
+        }
+        stage('Checkout Code') {
+            steps {
+                // Jenkins checks out the main "DevOps-Projects" repo here
+                checkout scm
+            }
+        }
+        stage("Sonarqube Analysis") {
+            steps {
+                // We enter the project folder for analysis
+                dir('DevOps-Project-09/Netflix-clone') {
+                    withSonarQubeEnv('sonar-server') {
+                        sh ''' $SCANNER_HOME/bin/sonar-scanner \
+                        -Dsonar.projectName=Netflix \
+                        -Dsonar.projectKey=Netflix '''
+                    }
+                }
+            }
+        }
+        stage("Quality Gate") {
+            steps {
+                timeout(time: 1, unit: 'HOURS') {
+                    waitForQualityGate abortPipeline: false
+                }
+            }
+        }
+        stage('Install Dependencies') {
+            steps {
+                dir('DevOps-Project-09/Netflix-clone') {
+                    sh "npm install"
+                }
+            }
+        }
+        // stage('OWASP FS Scan') {
+        //     steps {
+        //         dir('DevOps-Project-09/Netflix-clone') {
+        //             dependencyCheck additionalArguments: '--scan ./ --disableYarnAudit --disableNodeAudit', odcInstallation: 'DP-Check'
+        //             dependencyCheckPublisher pattern: '**/dependency-check-report.xml'
+        //         }
+        //     }
+        // }
+        stage('Trivy FS Scan') {
+            steps {
+                dir('DevOps-Project-09/Netflix-clone') {
+                    sh "trivy fs . > trivyfs.txt"
+                }
+            }
+        }
+        stage("Docker Build & Push") {
+            steps {
+                dir('DevOps-Project-09/Netflix-clone') {
+                    script {
+                       withDockerRegistry(credentialsId: 'docker', toolName: 'docker') {
+                           sh "docker build --build-arg TMDB_V3_API_KEY=${TMDB_API_KEY} -t netflix ."
+                           sh "docker tag netflix ${DOCKER_IMAGE}"
+                           sh "docker push ${DOCKER_IMAGE}"
+                        }
+                    }
+                }
+            }
+        }
+        stage("Trivy Image Scan") {
+            steps {
+                sh "trivy image ${DOCKER_IMAGE} > trivyimage.txt"
+            }
+        }
+        stage('Deploy to Kubernetes') {
+            steps {
+                withKubeConfig(credentialsId: 'k8s') {
+                    dir('DevOps-Project-09/Netflix-clone') {
+                        // Uses the files inside the 'Kubernetes' folder in your repo
+                        sh 'kubectl apply -f Kubernetes/deployment.yml'
+                        sh 'kubectl apply -f Kubernetes/service.yml'
+                    }
+                }
+            }
+        }
+    }
+    post {
+        always {
+            emailext attachLog: true,
+                subject: "'${currentBuild.result}'",
+                body: "Project: ${env.JOB_NAME} - Build #${env.BUILD_NUMBER}",
+                to: 'ryansaad85@gmail.com', // Update this to your real email if needed
+                attachmentsPattern: 'trivyfs.txt,trivyimage.txt'
+        }
+    }
+}
