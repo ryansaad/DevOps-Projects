@@ -93,7 +93,7 @@ module "ec2_instance" {
 
   instance_type               = var.instance_type
   ami                         = "ami-0e8a34246278c21e4"
-  key_name                    = "jenkins_server_keypair"
+  key_name                    = "Devopss"
   monitoring                  = true
   vpc_security_group_ids      = [module.sg.security_group_id]
   subnet_id                   = module.vpc.public_subnets[0]
