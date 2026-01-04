@@ -4,6 +4,7 @@ pipeline{
         AWS_ACCESS_KEY_ID = credentials('AWS_ACCESS_KEY_ID')
         AWS_SECRET_ACCESS_KEY = credentials('AWS_SECRET_ACCESS_KEY')
         AWS_DEFAULT_REGION = "us-east-1"
+        PROJECT_FOLDER        = "DevOps-Project-19"
     }
     stages {
         stage('Checkout SCM') {
@@ -16,7 +17,7 @@ pipeline{
         stage('Initializing Terraform'){
             steps {
                 script {
-                    dir('tf-aws-eks'){
+                   dir("${PROJECT_FOLDER}/tf-aws-eks") {
                         sh 'terraform init'
                     }
                 }
@@ -25,7 +26,7 @@ pipeline{
         stage('Validating Terraform'){
             steps {
                 script {
-                    dir('tf-aws-eks'){
+                    dir("${PROJECT_FOLDER}/tf-aws-eks") {
                         sh 'terraform validate'
                     }
                 }
@@ -33,7 +34,7 @@ pipeline{
         }
         stage('Terraform Plan') {
             steps {
-                dir('tf-aws-eks') {
+                dir("${PROJECT_FOLDER}/tf-aws-eks") {
                     // Added -no-color to make logs cleaner
                     sh 'terraform plan -var-file=variables/dev.tfvars -no-color'
                 }
@@ -44,7 +45,7 @@ pipeline{
 
         stage('Creating EKS Cluster') {
             steps {
-                dir('tf-aws-eks') {
+                dir("${PROJECT_FOLDER}/tf-aws-eks") {
                     // CHANGED: Replaced undefined $action with 'apply'
                     sh 'terraform apply -var-file=variables/dev.tfvars -auto-approve'
                 }
@@ -53,7 +54,7 @@ pipeline{
         stage('Deploying Nginx Application') {
             steps{
                 script{
-                    dir('manifest') {
+                    dir("${PROJECT_FOLDER}/manifest") {
                         sh 'aws eks update-kubeconfig --name my-eks-cluster'
                         sh 'kubectl create namespace eks-nginx-app || true'
                         sh 'kubectl apply -f deployment.yaml -n eks-nginx-app'
