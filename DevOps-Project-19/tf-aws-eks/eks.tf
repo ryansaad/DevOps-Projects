@@ -13,7 +13,7 @@ module "eks" {
   subnet_ids               = module.vpc.private_subnets
 
 # This grants Admin permissions to the IAM User explicitly
-  enable_cluster_creator_admin_permissions = true
+  enable_cluster_creator_admin_permissions = false
 
   access_entries = {
     # The key name can be anything, e.g., "jenkins_admin"
