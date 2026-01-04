@@ -31,22 +31,22 @@ pipeline{
                 }
             }
         }
-        stage('Terraform Plan'){
+        stage('Terraform Plan') {
             steps {
-                script {
-                    dir('tf-aws-eks'){
-                        sh 'terraform plan -var-file=variables/dev.tfvars'
-                    }
-                    input(message: "Are you sure to proceed?", ok: "Proceed")
+                dir('tf-aws-eks') {
+                    // Added -no-color to make logs cleaner
+                    sh 'terraform plan -var-file=variables/dev.tfvars -no-color'
                 }
+                // This will pause the pipeline until you click "Proceed" in Jenkins
+                input(message: "Are you sure to proceed?", ok: "Proceed")
             }
         }
-        stage('Creating/Destroying EKS Cluster'){
+
+        stage('Creating EKS Cluster') {
             steps {
-                script {
-                    dir('tf-aws-eks'){
-                        sh 'terraform $action -var-file=variables/dev.tfvars -auto-approve' 
-                    }
+                dir('tf-aws-eks') {
+                    // CHANGED: Replaced undefined $action with 'apply'
+                    sh 'terraform apply -var-file=variables/dev.tfvars -auto-approve'
                 }
             }
         }
@@ -55,7 +55,7 @@ pipeline{
                 script{
                     dir('manifest') {
                         sh 'aws eks update-kubeconfig --name my-eks-cluster'
-                        sh 'kubectl create namespace eks-nginx-app'
+                        sh 'kubectl create namespace eks-nginx-app || true'
                         sh 'kubectl apply -f deployment.yaml -n eks-nginx-app'
                         sh 'kubectl apply -f service.yaml -n eks-nginx-app'
                     }
