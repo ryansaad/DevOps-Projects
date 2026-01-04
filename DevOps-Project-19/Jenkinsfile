@@ -4,20 +4,20 @@ pipeline{
         AWS_ACCESS_KEY_ID = credentials('AWS_ACCESS_KEY_ID')
         AWS_SECRET_ACCESS_KEY = credentials('AWS_SECRET_ACCESS_KEY')
         AWS_DEFAULT_REGION = "us-east-1"
-
+        PROJECT_FOLDER        = "DevOps-Project-19"
     }
     stages {
         stage('Checkout SCM') {
             steps {
                 script {
-                    checkout scmGit(branches: [[name: '*/main']], extensions: [], userRemoteConfigs: [[url: 'https://github.com/vishal2505/terraform-eks-cicd.git']])
+                    checkout scm
                 }
             }
         }
         stage('Initializing Terraform'){
             steps {
                 script {
-                    dir('tf-aws-eks'){
+                   dir("${PROJECT_FOLDER}/tf-aws-eks") {
                         sh 'terraform init'
                     }
                 }
@@ -26,35 +26,35 @@ pipeline{
         stage('Validating Terraform'){
             steps {
                 script {
-                    dir('tf-aws-eks'){
+                    dir("${PROJECT_FOLDER}/tf-aws-eks") {
                         sh 'terraform validate'
                     }
                 }
             }
         }
-        stage('Terraform Plan'){
+        stage('Terraform Plan') {
             steps {
-                script {
-                    dir('tf-aws-eks'){
-                        sh 'terraform plan -var-file=variables/dev.tfvars'
-                    }
-                    input(message: "Are you sure to proceed?", ok: "Proceed")
+                dir("${PROJECT_FOLDER}/tf-aws-eks") {
+                    // Added -no-color to make logs cleaner
+                    sh 'terraform plan -var-file=variables/dev.tfvars -no-color'
                 }
+                // This will pause the pipeline until you click "Proceed" in Jenkins
+                input(message: "Are you sure to proceed?", ok: "Proceed")
             }
         }
-        stage('Creating/Destroying EKS Cluster'){
+
+        stage('Creating EKS Cluster') {
             steps {
-                script {
-                    dir('tf-aws-eks'){
-                        sh 'terraform $action -var-file=variables/dev.tfvars -auto-approve' 
-                    }
+                dir("${PROJECT_FOLDER}/tf-aws-eks") {
+                    // CHANGED: Replaced undefined $action with 'apply'
+                    sh 'terraform apply -var-file=variables/dev.tfvars -auto-approve'
                 }
             }
         }
         stage('Deploying Nginx Application') {
             steps{
                 script{
-                    dir('manifest') {
+                    dir("${PROJECT_FOLDER}/manifest") {
                         sh 'aws eks update-kubeconfig --name my-eks-cluster'
                         sh 'kubectl create namespace eks-nginx-app || true'
                         sh 'kubectl apply -f deployment.yaml -n eks-nginx-app'
