@@ -55,6 +55,8 @@ pipeline{
             steps{
                 script{
                     dir("${PROJECT_FOLDER}/manifest") {
+
+                        sh "aws sts get-caller-identity"
                         sh 'aws eks update-kubeconfig --name my-eks-cluster'
                         sh 'kubectl create namespace eks-nginx-app || true'
                         sh 'kubectl apply -f deployment.yaml -n eks-nginx-app'
