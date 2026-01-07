@@ -14,18 +14,20 @@ phases:
       java: corretto17
   pre_build:
     commands:
+      # Navigate to correct folder
       - cd DevOps-Project-23/Swiggy_clone
       - echo "Current directory:"
       - pwd 
       
       - echo "Installing dependencies..."
-      # Install Trivy
+      # INSTALL LATEST TRIVY (Fixes Rate Limit Error)
       - sudo apt-get install wget apt-transport-https gnupg lsb-release -y
       - wget -qO - https://aquasecurity.github.io/trivy-repo/deb/public.key | sudo apt-key add -
       - echo deb https://aquasecurity.github.io/trivy-repo/deb $(lsb_release -sc) main | sudo tee -a /etc/apt/sources.list.d/trivy.list
       - sudo apt-get update
       - sudo apt-get install trivy -y
       
+      # Run Trivy File Scan
       - echo "Performing Trivy file scan..."
       - trivy filesystem --exit-code 0 --no-progress . >> trivyfilescan.txt
       
@@ -39,26 +41,20 @@ phases:
 
   build:
     commands:
+      # We are already in the correct folder
       - echo "Running tests..."
       - echo "Building Docker image..."
-      # FIX: Convert username to lowercase for the Docker Tag
-      - export DOCKER_USERNAME_LOWER=$(echo "$DOCKER_REGISTRY_USERNAME" | tr '[:upper:]' '[:lower:]')
-      
       - echo "$DOCKER_REGISTRY_PASSWORD" | docker login -u "$DOCKER_REGISTRY_USERNAME" --password-stdin "$DOCKER_REGISTRY_URL"
-      
-      # Use the Lowercase variable for build and push
-      - docker build -t "$DOCKER_USERNAME_LOWER/swiggy:latest" .
-      - docker push "$DOCKER_USERNAME_LOWER/swiggy:latest"
+      - export DOCKER_USERNAME_LOWER=$(echo "$DOCKER_REGISTRY_USERNAME" | tr '[:upper:]' '[:lower:]')
+      - docker push "$DOCKER_REGISTRY_USERNAME/swiggy:latest"
 
   post_build:
     commands:
       - echo "Performing Trivy image scan..."
-      # Use Lowercase variable here too
-      - trivy image "$DOCKER_USERNAME_LOWER/swiggy:latest" >> trivyimage.txt
-      
+      - trivy image "$DOCKER_REGISTRY_USERNAME/swiggy:latest" >> trivyimage.txt
       - echo "Running SonarQube analysis..."
-      # REPLACE WITH YOUR SONAR SERVER PUBLIC IP
-      - sonar-scanner -Dsonar.projectKey=swiggy -Dsonar.sources=. -Dsonar.host.url=http://http://44.210.131.159:9000/ -Dsonar.login=$SONAR_TOKEN
+      # REPLACE THE IP BELOW WITH YOUR SONAR SERVER PUBLIC IP
+      - sonar-scanner -Dsonar.projectKey=swiggy -Dsonar.sources=. -Dsonar.host.url=http://44.210.131.159:9000/ -Dsonar.login=$SONAR_TOKEN
       - echo "Build completed successfully!"
 
 artifacts:
