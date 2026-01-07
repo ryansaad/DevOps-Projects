@@ -14,20 +14,19 @@ phases:
       java: corretto17
   pre_build:
     commands:
-      # Navigate to correct folder
+      # Navigate to the correct folder
       - cd DevOps-Project-23/Swiggy_clone
       - echo "Current directory:"
       - pwd 
       
       - echo "Installing dependencies..."
-      # INSTALL LATEST TRIVY (Fixes Rate Limit Error)
+      # Install Trivy (Latest Version)
       - sudo apt-get install wget apt-transport-https gnupg lsb-release -y
       - wget -qO - https://aquasecurity.github.io/trivy-repo/deb/public.key | sudo apt-key add -
       - echo deb https://aquasecurity.github.io/trivy-repo/deb $(lsb_release -sc) main | sudo tee -a /etc/apt/sources.list.d/trivy.list
       - sudo apt-get update
       - sudo apt-get install trivy -y
       
-      # Run Trivy File Scan
       - echo "Performing Trivy file scan..."
       - trivy filesystem --exit-code 0 --no-progress . >> trivyfilescan.txt
       
@@ -41,19 +40,24 @@ phases:
 
   build:
     commands:
-      # We are already in the correct folder
       - echo "Running tests..."
       - echo "Building Docker image..."
+      # Login
       - echo "$DOCKER_REGISTRY_PASSWORD" | docker login -u "$DOCKER_REGISTRY_USERNAME" --password-stdin "$DOCKER_REGISTRY_URL"
-      - export DOCKER_USERNAME_LOWER=$(echo "$DOCKER_REGISTRY_USERNAME" | tr '[:upper:]' '[:lower:]')
+      
+      # Build the image (This command was missing!)
+      - docker build -t "$DOCKER_REGISTRY_USERNAME/swiggy:latest" .
+      
+      # Push the image
       - docker push "$DOCKER_REGISTRY_USERNAME/swiggy:latest"
 
   post_build:
     commands:
       - echo "Performing Trivy image scan..."
       - trivy image "$DOCKER_REGISTRY_USERNAME/swiggy:latest" >> trivyimage.txt
+      
       - echo "Running SonarQube analysis..."
-      # REPLACE THE IP BELOW WITH YOUR SONAR SERVER PUBLIC IP
+      # REPLACE WITH YOUR SONAR SERVER PUBLIC IP
       - sonar-scanner -Dsonar.projectKey=swiggy -Dsonar.sources=. -Dsonar.host.url=http://44.210.131.159:9000/ -Dsonar.login=$SONAR_TOKEN
       - echo "Build completed successfully!"
 
