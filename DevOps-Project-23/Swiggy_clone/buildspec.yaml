@@ -14,16 +14,23 @@ phases:
       java: corretto17
   pre_build:
     commands:
+      # Navigate to correct folder
       - cd DevOps-Project-23/Swiggy_clone
       - echo "Current directory:"
-      - pwd
+      - pwd 
+      
       - echo "Installing dependencies..."
-      - echo "Performing Trivy file scan before building the image..."
-      # Install Trivy
-      - wget https://github.com/aquasecurity/trivy/releases/download/v0.19.2/trivy_0.19.2_Linux-64bit.tar.gz
-      - tar zxvf trivy_0.19.2_Linux-64bit.tar.gz
-      - export PATH=$PATH:$PWD
+      # INSTALL LATEST TRIVY (Fixes Rate Limit Error)
+      - sudo apt-get install wget apt-transport-https gnupg lsb-release -y
+      - wget -qO - https://aquasecurity.github.io/trivy-repo/deb/public.key | sudo apt-key add -
+      - echo deb https://aquasecurity.github.io/trivy-repo/deb $(lsb_release -sc) main | sudo tee -a /etc/apt/sources.list.d/trivy.list
+      - sudo apt-get update
+      - sudo apt-get install trivy -y
+      
+      # Run Trivy File Scan
+      - echo "Performing Trivy file scan..."
       - trivy filesystem --exit-code 0 --no-progress . >> trivyfilescan.txt
+      
       # Install Sonar Scanner
       - export SONAR_SCANNER_VERSION=4.7.0.2747
       - export SONAR_SCANNER_HOME=$HOME/.sonar/sonar-scanner-$SONAR_SCANNER_VERSION-linux
@@ -34,6 +41,7 @@ phases:
 
   build:
     commands:
+      # We are already in the correct folder
       - echo "Running tests..."
       - echo "Building Docker image..."
       - echo "$DOCKER_REGISTRY_PASSWORD" | docker login -u "$DOCKER_REGISTRY_USERNAME" --password-stdin "$DOCKER_REGISTRY_URL"
@@ -42,9 +50,9 @@ phases:
 
   post_build:
     commands:
-      - echo "Performing Trivy image scan after building the image..."
+      - echo "Performing Trivy image scan..."
       - trivy image "$DOCKER_REGISTRY_USERNAME/swiggy:latest" >> trivyimage.txt
-      - echo "Running SonarQube analysis result"
+      - echo "Running SonarQube analysis..."
       # REPLACE THE IP BELOW WITH YOUR SONAR SERVER PUBLIC IP
       - sonar-scanner -Dsonar.projectKey=swiggy -Dsonar.sources=. -Dsonar.host.url=http://http://44.210.131.159:9000/ -Dsonar.login=$SONAR_TOKEN
       - echo "Build completed successfully!"
