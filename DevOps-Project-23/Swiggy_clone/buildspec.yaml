@@ -14,7 +14,7 @@ phases:
       java: corretto17
   pre_build:
     commands:
-      - cd DevOps-Project-23
+      - cd DevOps-Project-23/Swiggy_clone
       - echo "Current directory:"
       - pwd
       - echo "Installing dependencies..."
