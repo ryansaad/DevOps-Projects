@@ -11,7 +11,7 @@ pipeline {
         stage('Checkout from Git') {
             steps {
                 // ⚠️ Ensure 'master' is correct, change to 'main' if needed
-                git branch: 'main', url: 'https://github.com/ryansaad/DevOps-Projects.git'
+                git branch: 'main', credentialsId: 'github', url: 'https://github.com/ryansaad/DevOps-Projects.git'
             }
         }
         
