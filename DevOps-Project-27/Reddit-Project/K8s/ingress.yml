@@ -3,9 +3,8 @@ kind: Ingress
 metadata:
   name: reddit-ingress
   annotations:
-    # Keep the rewrite target
     nginx.ingress.kubernetes.io/rewrite-target: /
-    # --- ADD THESE LINES FOR CORS ---
+    # CORS Headers
     nginx.ingress.kubernetes.io/enable-cors: "true"
     nginx.ingress.kubernetes.io/cors-allow-methods: "PUT, GET, POST, OPTIONS"
     nginx.ingress.kubernetes.io/cors-allow-origin: "*"
@@ -13,7 +12,7 @@ metadata:
 spec:
   ingressClassName: nginx
   rules:
-  # Rule 1: Point the root domain
+  # Rule 1: Custom Domain
   - host: thersdevelopers.com
     http:
       paths:
@@ -24,9 +23,20 @@ spec:
             name: reddit-clone-service
             port:
               number: 80
-  # Rule 2: Point the 'www' subdomain
+  # Rule 2: WWW Subdomain
   - host: www.thersdevelopers.com
     http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: reddit-clone-service
+            port:
+              number: 80
+  # Rule 3: The "Catch-All" (For AWS Load Balancer URL)
+  # Notice there is NO 'host' line here. This matches everything else.
+  - http:
       paths:
       - path: /
         pathType: Prefix
