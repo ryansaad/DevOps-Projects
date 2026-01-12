@@ -1,86 +1,106 @@
-pipeline{
+pipeline {
     agent any
-    tools{
+    tools {
         jdk 'jdk17'
         nodejs 'node19'
     }
     environment {
-        SCANNER_HOME=tool 'sonar-scanner'
+        SCANNER_HOME = tool 'sonar-scanner'
     }
     stages {
-        stage('Checkout from Git'){
-            steps{
+        stage('Checkout from Git') {
+            steps {
+                // ⚠️ Ensure 'master' is correct, change to 'main' if needed
                 git branch: 'master', url: 'https://github.com/ryansaad/DevOps-Projects.git'
             }
         }
+        
         stage('Install Dependencies') {
             steps {
-                sh "npm install"
-            }
-        }
-        stage("Sonarqube Analysis "){
-            steps{
-                withSonarQubeEnv('sonar-server') {
-                    sh ''' $SCANNER_HOME/bin/sonar-scanner -Dsonar.projectName=Chatbot \
-                    -Dsonar.projectKey=Chatbot '''
+                // ⚠️ UPDATE THIS PATH to match where your Chatbot-UI folder is inside your repo
+                dir('DevOps-Project-28/Chatbot-UI') { 
+                    sh "npm install"
                 }
             }
         }
-        stage("quality gate"){
-           steps {
-                script {
-                    waitForQualityGate abortPipeline: false, credentialsId: 'Sonar-token' 
-                }
-            } 
-        }
-        // stage('OWASP FS SCAN') {
-        //     steps {
-        //         dependencyCheck additionalArguments: '--scan ./ --disableYarnAudit --disableNodeAudit', odcInstallation: 'DP-Check'
-        //         dependencyCheckPublisher pattern: '**/dependency-check-report.xml'
-        //     }
-        // }
-        stage('TRIVY FS SCAN') {
+        
+        stage("Sonarqube Analysis") {
             steps {
-                sh "trivy fs . > trivyfs.json"
-            }
-        }
-        stage("Docker Build & Push"){
-            steps{
-                script{
-                   withDockerRegistry(credentialsId: 'docker', toolName: 'docker'){   
-                       sh "docker build -t chatbot ."
-                       sh "docker tag chatbot ryansaad85/chatbot:latest "
-                       sh "docker push ryansaad85/chatbot:latest "
+                dir('DevOps-Project-28/Chatbot-UI') {
+                    withSonarQubeEnv('sonar-server') {
+                        sh ''' $SCANNER_HOME/bin/sonar-scanner -Dsonar.projectName=Chatbot \
+                        -Dsonar.projectKey=Chatbot '''
                     }
                 }
             }
         }
-        stage("TRIVY"){
-            steps{
-                sh "trivy image ryansaad85/chatbot:latest > trivy.json" 
-            }
-        }
-        stage ("Remove container") {
-            steps{
-                sh "docker stop chatbot | true"
-                sh "docker rm chatbot | true"
-             }
-        }
-        stage('Deploy to container'){
-            steps{
-                sh 'docker run -d --name chatbot -p 3000:3000 ryansaad85/chatbot:latest'
-            }
-        }
-        stage('Deploy to kubernetes'){
-            steps{
-                withAWS(credentials: 'aws-key', region: 'us-east-1'){
-                script{
-                    withKubeConfig(caCertificate: '', clusterName: '', contextName: '', credentialsId: 'k8s', namespace: '', restrictKubeConfigAccess: false, serverUrl: '') {
-                       sh 'kubectl apply -f k8s/chatbot-ui.yaml'
-                  }
+        
+        stage("Quality Gate") {
+            steps {
+                script {
+                    waitForQualityGate abortPipeline: false, credentialsId: 'Sonar-token'
                 }
             }
         }
+        
+        stage('TRIVY FS SCAN') {
+            steps {
+                dir('DevOps-Project-28/Chatbot-UI') {
+                    sh "trivy fs . > trivyfs.json"
+                }
+            }
         }
+        
+        stage("Docker Build & Push") {
+            steps {
+                dir('DevOps-Project-28/Chatbot-UI') {
+                    script {
+                        withDockerRegistry(credentialsId: 'docker', toolName: 'docker') {
+                            sh "docker build -t chatbot ."
+                            sh "docker tag chatbot ryansaad85/chatbot:latest"
+                            sh "docker push ryansaad85/chatbot:latest"
+                        }
+                    }
+                }
+            }
+        }
+        
+        stage("TRIVY Image Scan") {
+            steps {
+                sh "trivy image ryansaad85/chatbot:latest > trivy.json"
+            }
+        }
+        
+        stage("Remove Local Container") {
+            steps {
+                // Cleans up any old container running on the Jenkins server
+                sh "docker stop chatbot || true"
+                sh "docker rm chatbot || true"
+            }
+        }
+        
+        stage('Deploy to Local Docker (Test)') {
+            steps {
+                // Runs the app on the Jenkins server (Port 3000) for testing
+                sh 'docker run -d --name chatbot -p 3000:3000 ryansaad85/chatbot:latest'
+            }
+        }
+
+        /* ---------------------------------------------------
+        UNCOMMENT THIS STAGE ONLY AFTER EKS IS READY 
+        ---------------------------------------------------
+        stage('Deploy to Kubernetes') {
+            steps {
+                withAWS(credentials: 'aws-key', region: 'us-east-1') {
+                    script {
+                        // Ensure 'k8s' credential exists in Jenkins
+                        withKubeConfig(credentialsId: 'k8s') {
+                            sh 'kubectl apply -f k8s/chatbot-ui.yaml'
+                        }
+                    }
+                }
+            }
+        }
+        */
     }
-    }
+}
