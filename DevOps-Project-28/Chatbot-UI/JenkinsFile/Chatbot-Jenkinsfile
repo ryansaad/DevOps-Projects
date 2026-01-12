@@ -11,7 +11,7 @@ pipeline {
         stage('Checkout from Git') {
             steps {
                 // ⚠️ Ensure 'master' is correct, change to 'main' if needed
-                git branch: 'master', url: 'https://github.com/ryansaad/DevOps-Projects.git'
+                git branch: 'main', url: 'https://github.com/ryansaad/DevOps-Projects.git'
             }
         }
         
@@ -86,9 +86,7 @@ pipeline {
             }
         }
 
-        /* ---------------------------------------------------
-        UNCOMMENT THIS STAGE ONLY AFTER EKS IS READY 
-        ---------------------------------------------------
+      
         stage('Deploy to Kubernetes') {
             steps {
                 withAWS(credentials: 'aws-key', region: 'us-east-1') {
@@ -101,6 +99,6 @@ pipeline {
                 }
             }
         }
-        */
+        
     }
 }
