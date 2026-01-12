@@ -10,14 +10,12 @@ pipeline {
     stages {
         stage('Checkout from Git') {
             steps {
-                // ⚠️ Ensure 'master' is correct, change to 'main' if needed
                 git branch: 'main', credentialsId: 'github', url: 'https://github.com/ryansaad/DevOps-Projects.git'
             }
         }
         
         stage('Install Dependencies') {
             steps {
-                // ⚠️ UPDATE THIS PATH to match where your Chatbot-UI folder is inside your repo
                 dir('DevOps-Project-28/Chatbot-UI') { 
                     sh "npm install"
                 }
@@ -73,32 +71,32 @@ pipeline {
         
         stage("Remove Local Container") {
             steps {
-                // Cleans up any old container running on the Jenkins server
                 sh "docker stop chatbot || true"
                 sh "docker rm chatbot || true"
             }
         }
         
+        // OPTIONAL: Deploy to Jenkins Server for testing (Port 3000)
         stage('Deploy to Local Docker (Test)') {
             steps {
-                // Runs the app on the Jenkins server (Port 3000) for testing
                 sh 'docker run -d --name chatbot -p 3000:3000 ryansaad85/chatbot:latest'
             }
         }
 
-      
         stage('Deploy to Kubernetes') {
             steps {
-                withAWS(credentials: 'aws-key', region: 'us-east-1') {
-                    script {
-                        // Ensure 'k8s' credential exists in Jenkins
-                        withKubeConfig(credentialsId: 'k8s') {
-                            sh 'kubectl apply -f k8s/chatbot-ui.yaml'
+                // ⚠️ CRITICAL FIX: Tell Jenkins where to find the YAML file
+                dir('DevOps-Project-28/Chatbot-UI/k8s') {
+                    withAWS(credentials: 'aws-key', region: 'us-east-1') {
+                        script {
+                            withKubeConfig(credentialsId: 'k8s') {
+                                // Now it will find k8s/chatbot-ui.yaml correctly
+                                sh 'kubectl apply -f k8s/chatbot-ui.yaml' 
+                            }
                         }
                     }
                 }
             }
         }
-        
     }
 }
