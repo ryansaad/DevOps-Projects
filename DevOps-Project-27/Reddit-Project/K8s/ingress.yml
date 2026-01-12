@@ -3,7 +3,13 @@ kind: Ingress
 metadata:
   name: reddit-ingress
   annotations:
+    # Keep the rewrite target
     nginx.ingress.kubernetes.io/rewrite-target: /
+    # --- ADD THESE LINES FOR CORS ---
+    nginx.ingress.kubernetes.io/enable-cors: "true"
+    nginx.ingress.kubernetes.io/cors-allow-methods: "PUT, GET, POST, OPTIONS"
+    nginx.ingress.kubernetes.io/cors-allow-origin: "*"
+    nginx.ingress.kubernetes.io/cors-allow-credentials: "true"
 spec:
   ingressClassName: nginx
   rules:
@@ -18,7 +24,7 @@ spec:
             name: reddit-clone-service
             port:
               number: 80
-  # Rule 2: Point the 'www' subdomain (Best Practice)
+  # Rule 2: Point the 'www' subdomain
   - host: www.thersdevelopers.com
     http:
       paths:
