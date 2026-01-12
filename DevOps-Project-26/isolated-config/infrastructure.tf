@@ -4,7 +4,7 @@ provider "aws" {
 
 # Create an S3 bucket
 resource "aws_s3_bucket" "mybucket" {
-    bucket = "s3statefile786"  # Change to a unique bucket name
+    bucket = "s3statefile7861234"  # Change to a unique bucket name
 
     # Optional: Adding tags to the bucket
     tags = {
