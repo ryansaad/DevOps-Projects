@@ -1,89 +1,114 @@
-pipeline{
+pipeline {
     agent any
-    tools{
-        jdk 'jdk'
-        nodejs 'nodejs'
+
+    tools {
+        jdk 'jdk17'        // Matched to your Global Tool Config
+        nodejs 'node16'    // Matched to your Global Tool Config
     }
+
     environment {
-        SCANNER_HOME=tool 'sonar-scanner'
+        SCANNER_HOME = tool 'sonar-scanner'
+        // YOUR DOCKERHUB USERNAME (Verify this!)
+        DOCKER_USER = "ryansaad85" 
+        // YOUR GITHUB DETAILS
+        GIT_REPO_NAME = "DevOps-Projects"
+        GIT_USER_NAME = "ryansaad"
     }
+
     stages {
-        stage('clean workspace'){
-            steps{
+        stage('clean workspace') {
+            steps {
                 cleanWs()
             }
         }
-        stage('Checkout from Git'){
-            steps{
-                git branch: 'main', url: 'https://github.com/uniquesreedhar/Reddit-Project.git'
+
+        stage('Checkout from Git') {
+            steps {
+                git branch: 'main', url: 'https://github.com/ryansaad/DevOps-Projects.git'
             }
         }
+
         stage('Install Dependencies') {
             steps {
-                sh "npm install"
-            }
-        }
-        stage("Sonarqube Analysis "){
-            steps{
-                withSonarQubeEnv('sonar-server') {
-                    sh ''' $SCANNER_HOME/bin/sonar-scanner -Dsonar.projectName=Reddit \
-                    -Dsonar.projectKey=Reddit '''
+                // Move into the project folder
+                dir('DevOps-Project-27/Reddit-Project') {
+                    sh "npm install"
                 }
             }
         }
-        stage("quality gate"){
-           steps {
-                script {
-                    waitForQualityGate abortPipeline: false, credentialsId: 'sonar-token'
-                }
-            }
-        }
-        stage('OWASP FS SCAN') {
+
+        stage("Sonarqube Analysis") {
             steps {
-                dependencyCheck additionalArguments: '--scan ./ --disableYarnAudit --disableNodeAudit', odcInstallation: 'DP-Check'
-                dependencyCheckPublisher pattern: '**/dependency-check-report.xml'
-            }
-        }
-        stage('TRIVY FS SCAN') {
-            steps {
-                sh "trivy fs . > trivyfs.txt"
-            }
-        }
-        stage("Docker Build & Push"){
-            steps{
-                script{
-                   withDockerRegistry(credentialsId: 'docker', toolName: 'docker'){
-                       sh "docker build -t reddit ."
-                       sh "docker tag reddit sreedhar8897/reddit:${BUILD_NUMBER} "
-                       sh "docker push sreedhar8897/reddit:${BUILD_NUMBER} "
+                dir('DevOps-Project-27/Reddit-Project') {
+                    withSonarQubeEnv('sonar-server') {
+                        sh ''' $SCANNER_HOME/bin/sonar-scanner -Dsonar.projectName=Reddit \
+                        -Dsonar.projectKey=Reddit '''
                     }
                 }
             }
         }
-        stage("TRIVY"){
-            steps{
-                sh "trivy image sreedhar8897/reddit:latest > trivy.txt"
+
+        stage("Quality Gate") {
+            steps {
+                script {
+                    // Changed credential ID to match what we created
+                    waitForQualityGate abortPipeline: false, credentialsId: 'sonarqube-token'
+                }
             }
         }
-        stage('Update Deployment file') {
-            environment {
-                GIT_REPO_NAME = "Reddit-Project"
-                GIT_USER_NAME = "uniquesreedhar"
-            }
+
+        stage('TRIVY FS SCAN') {
             steps {
-                dir('K8s'){
-                    withCredentials([string(credentialsId: 'githubcred', variable: 'GITHUB_TOKEN')]) {
+                dir('DevOps-Project-27/Reddit-Project') {
+                    sh "trivy fs . > trivyfs.txt"
+                }
+            }
+        }
+
+        stage("Docker Build & Push") {
+            steps {
+                dir('DevOps-Project-27/Reddit-Project') {
+                    script {
+                        // Changed credential ID to 'docker-creds'
+                        withDockerRegistry(credentialsId: 'docker', toolName: 'docker') {
+                            sh "docker build -t reddit ."
+                            sh "docker tag reddit ${DOCKER_USER}/reddit:${BUILD_NUMBER}"
+                            sh "docker push ${DOCKER_USER}/reddit:${BUILD_NUMBER}"
+                        }
+                    }
+                }
+            }
+        }
+
+        stage("TRIVY Image Scan") {
+            steps {
+                // Scan the specific image we just built
+                sh "trivy image ${DOCKER_USER}/reddit:${BUILD_NUMBER} > trivy.txt"
+            }
+        }
+
+        stage('Update Deployment file') {
+            steps {
+                // Move into the K8s folder
+                dir('DevOps-Project-27/Reddit-Project/K8s') {
+                    // Changed credential ID to 'github-creds'
+                    withCredentials([string(credentialsId: 'github', variable: 'GITHUB_TOKEN')]) {
                         sh '''
-                            git config user.email "madithatisreedhar123@gmail.com"
-                            git config user.name "uniquesreedhar"
-                            BUILD_NUMBER=${BUILD_NUMBER}
-                            echo $BUILD_NUMBER
+                            git config user.email "ryansaad85@gmail.com"
+                            git config user.name "ryansaad"
+                            
+                            echo "Updating Deployment to Build Number: ${BUILD_NUMBER}"
+                            
+                            # Grab the old tag from the yaml file
                             imageTag=$(grep -oP '(?<=reddit:)[^ ]+' deployment.yml)
-                            echo $imageTag
+                            
+                            # Replace old tag with new build number
                             sed -i "s/reddit:${imageTag}/reddit:${BUILD_NUMBER}/" deployment.yml
+                            
+                            # Commit and Push
                             git add deployment.yml
-                            git commit -m "Update deployment Image to version \${BUILD_NUMBER}"
-                            git push https://${GITHUB_TOKEN}@github.com/${GIT_USER_NAME}/${GIT_REPO_NAME} HEAD:main
+                            git commit -m "Update deployment Image to version ${BUILD_NUMBER}"
+                            git push https://${GITHUB_TOKEN}@github.com/${GIT_USER_NAME}/${GIT_REPO_NAME}.git HEAD:main
                         '''
                     }
                 }
