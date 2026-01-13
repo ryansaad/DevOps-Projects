@@ -86,7 +86,7 @@ pipeline {
         stage('Deploy to Kubernetes') {
             steps {
                 // ⚠️ CRITICAL FIX: Tell Jenkins where to find the YAML file
-                dir('DevOps-Project-28/Chatbot-UI/k8s') {
+                dir('DevOps-Project-28/Chatbot-UI') {
                     withAWS(credentials: 'aws-key', region: 'us-east-1') {
                         script {
                             withKubeConfig(credentialsId: 'k8s') {
