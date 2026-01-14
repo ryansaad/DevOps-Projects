@@ -1,117 +1,128 @@
 pipeline {
     agent any
-    
     tools {
-        jdk "jdk17"     // Verified: You named this jdk17
-        maven "maven3"  // Verified: You named this maven3
+        jdk "jdk17"
+        maven "maven3"
     }
-    
     environment {
         SCANNER_HOME = tool 'sonar-scanner'
-        DOCKER_IMAGE = "ryansaad85/blogging-app"
-        // Define the subfolder name here for easy reuse
-        PROJECT_DIR = "full-stack-blogging-app"
     }
     
     stages {
         stage('Git Checkout') {
             steps {
-                // Since you are using "Pipeline from SCM", Jenkins auto-checkouts the code.
-                // We just need to ensure we have the fresh code.
-                checkout scm
+                git branch: 'main', credentialsId: 'github', url: 'https://github.com/ryansaad/DevOps-Projects.git'
             }
         }
-        
         stage('Compile') {
             steps {
-                dir("${PROJECT_DIR}") {
-                    sh "mvn compile"
-                }
+                sh "mvn compile"
             }
         }
-        
         stage('Trivy FS') {
             steps {
-                dir("${PROJECT_DIR}") {
-                    sh "trivy fs . --format table -o fs.html"
-                }
+                sh "trivy fs . --format table -o fs.html"
             }
         }
-        
         stage('SonarQube Analysis') {
             steps {
-                dir("${PROJECT_DIR}") {
-                    withSonarQubeEnv('sonar-server') {
-                        sh """$SCANNER_HOME/bin/sonar-scanner \
-                        -Dsonar.projectName=Blogging-app \
-                        -Dsonar.projectKey=Blogging-app \
-                        -Dsonar.java.binaries=target"""
-                    }
+                withSonarQubeEnv('sonar-server') {
+                    sh '''$SCANNER_HOME/bin/sonar-scanner -Dsonar.projectName=Blogging-app -Dsonar.projectKey=Blogging-app \
+                          -Dsonar.java.binaries=target'''
                 }
             }
         }
-        
         stage('Build') {
             steps {
-                dir("${PROJECT_DIR}") {
-                    sh "mvn package"
-                }
+                sh "mvn package"
             }
         }
-        
         stage('Publish Artifacts') {
             steps {
-                dir("${PROJECT_DIR}") {
-                    withMaven(globalMavenSettingsConfig: 'maven-settings', jdk: 'jdk17', maven: 'maven3', mavenSettingsConfig: '', traceability: true) {
+                withMaven(globalMavenSettingsConfig: 'maven-settings', jdk: 'jdk17', maven: 'maven3', mavenSettingsConfig: '', traceability: true) {
                         sh "mvn deploy"
-                    }
                 }
             }
         }
-        
         stage('Docker Build & Tag') {
             steps {
-                dir("${PROJECT_DIR}") {
-                    script {
-                        withDockerRegistry(credentialsId: 'docker', url: 'https://index.docker.io/v1/') {
-                            sh "docker build -t ${DOCKER_IMAGE}:${BUILD_NUMBER} ."
-                            sh "docker tag ${DOCKER_IMAGE}:${BUILD_NUMBER} ${DOCKER_IMAGE}:latest"
-                        }
-                    }
+                script{
+                withDockerRegistry(credentialsId: 'docker', url: 'https://index.docker.io/v1/') {
+                sh "docker build -t ryansaad85/blogging-app ."
+                }
                 }
             }
         }
-        
         stage('Trivy Image Scan') {
             steps {
-                // No dir() needed here as Trivy scans the remote/local image, not a file path
-                sh "trivy image --format table -o image.html ${DOCKER_IMAGE}:latest"
+                sh "trivy image --format table -o image.html ryansaad85/blogging-app:latest"
             }
         }
-        
         stage('Docker Push Image') {
             steps {
-                script {
-                    withDockerRegistry(credentialsId: 'docker', url: 'https://index.docker.io/v1/') {
-                        sh "docker push ${DOCKER_IMAGE}:${BUILD_NUMBER}"
-                        sh "docker push ${DOCKER_IMAGE}:latest"
-                    }
+                script{
+                withDockerRegistry(credentialsId: 'docker', url: 'https://index.docker.io/v1/') {
+                    sh "docker push ryansaad85/blogging-app"
+                }
                 }
             }
         }
-    } // Closing stages
+        // stage('K8s Deploy') {
+        //     steps {
+        //        withKubeCredentials(kubectlCredentials: [[caCertificate: '', clusterName: ' devopsshack-cluster', contextName: '', credentialsId: 'k8s-token', namespace: 'webapps', serverUrl: 'https://AD1D9143EC6B3C8A72B36759FA28854D.gr7.eu-west-2.eks.amazonaws.com']]) {
+        //             sh "kubectl apply -f deployment-service.yml"
+        //             sleep 20
+        //         }
+        //     }
+        // }
+        // stage('Verify Deployment') {
+        //     steps {
+        //        withKubeCredentials(kubectlCredentials: [[caCertificate: '', clusterName: ' devopsshack-cluster', contextName: '', credentialsId: 'k8s-token', namespace: 'webapps', serverUrl: 'https://AD1D9143EC6B3C8A72B36759FA28854D.gr7.eu-west-2.eks.amazonaws.com']]) {
+        //             sh "kubectl get pods"
+        //             sh "kubectl get service"
+        //         }
+        //     }
+        // }
+        
+    }  // Closing stages
+ // Closing pipeline
+post {
+    always {
+        script {
+            // Get job name, build number, and pipeline status
+            def jobName = env.JOB_NAME
+            def buildNumber = env.BUILD_NUMBER
+            def pipelineStatus = currentBuild.result ?: 'UNKNOWN'
+            pipelineStatus = pipelineStatus.toUpperCase()
+            
+            // Set the banner color based on the status
+            def bannerColor = pipelineStatus == 'SUCCESS' ? 'green' : 'red'
 
-    post {
-        always {
-            script {
-                def jobName = env.JOB_NAME
-                def buildNumber = env.BUILD_NUMBER
-                def pipelineStatus = currentBuild.result ?: 'SUCCESS'
-                echo "Pipeline finished with status: ${pipelineStatus}"
-                
-                // Optional: Send email
-                // emailext ...
-            }
+            // HTML body for the email
+            def body = """
+            <body>
+                <div style="border: 2px solid ${bannerColor}; padding: 10px;">
+                    <h3 style="color: ${bannerColor};">
+                        Pipeline Status: ${pipelineStatus}
+                    </h3>
+                    <p>Job: ${jobName}</p>
+                    <p>Build Number: ${buildNumber}</p>
+                    <p>Status: ${pipelineStatus}</p>
+                </div>
+            </body>
+            """
+
+            // Send email notification
+            emailext(
+                subject: "${jobName} - Build ${buildNumber} - ${pipelineStatus}",
+                body: body,
+                to: 'ryansaad85@gmail.com',
+                from: 'mohiuddinsaad85@example.com',
+                replyTo: 'jenkins@example.com',
+                mimeType: 'text/html'
+            )
         }
     }
+}
+
 }
