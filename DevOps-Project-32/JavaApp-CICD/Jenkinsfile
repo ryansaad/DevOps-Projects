@@ -66,9 +66,9 @@ pipeline {
         
         stage('Deploy to Tomcat') {
             steps {
-                // Copy from the nested target folder to Tomcat
-                // NOTE: We don't need dir() here if we provide the full path to the source file
-                sh 'sudo cp DevOps-Project-32/JavaApp-CICD/target/petclinic.war /opt/apache-tomcat-9.0.65/webapps/'
+                // We use "${WORKSPACE}" to force the full absolute path
+                // Note: We MUST use double quotes " " for the variable to work
+                sh "sudo cp ${WORKSPACE}/DevOps-Project-32/JavaApp-CICD/target/petclinic.war /opt/apache-tomcat-9.0.65/webapps/"
             }
         }
     }
