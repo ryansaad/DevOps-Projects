@@ -2,47 +2,56 @@ pipeline {
     agent any
     
     tools {
-        jdk "jdk17"     // Matches your Jenkins Tool configuration
-        maven "maven3"  // Matches your Jenkins Tool configuration
+        jdk "jdk17"
+        maven "maven3"
     }
     
     environment {
-        // Your DockerHub Image Name
+        // Updated to the correct nested path
+        PROJECT_DIR = "DevOps-Project-29/full-stack-blogging-app" 
         DOCKER_IMAGE = "ryansaad85/blogging-app"
     }
     
     stages {
         stage('Git Checkout') {
             steps {
-                // Jenkins automatically checks out source code in "Pipeline from SCM"
                 checkout scm
             }
         }
         
         stage('Compile') {
             steps {
-                sh "mvn compile"
+                // Now points to the deep folder
+                dir("${PROJECT_DIR}") {
+                    sh "mvn compile"
+                }
             }
         }
         
         stage('Trivy FS') {
             steps {
-                sh "trivy fs . --format table -o fs.html"
+                dir("${PROJECT_DIR}") {
+                    sh "trivy fs . --format table -o fs.html"
+                }
             }
         }
         
         stage('Build') {
             steps {
-                sh "mvn package"
+                dir("${PROJECT_DIR}") {
+                    sh "mvn package"
+                }
             }
         }
         
         stage('Docker Build & Tag') {
             steps {
-                script {
-                    withDockerRegistry(credentialsId: 'docker', url: 'https://index.docker.io/v1/') {
-                        sh "docker build -t ${DOCKER_IMAGE}:${BUILD_NUMBER} ."
-                        sh "docker tag ${DOCKER_IMAGE}:${BUILD_NUMBER} ${DOCKER_IMAGE}:latest"
+                dir("${PROJECT_DIR}") {
+                    script {
+                        withDockerRegistry(credentialsId: 'docker', url: 'https://index.docker.io/v1/') {
+                            sh "docker build -t ${DOCKER_IMAGE}:${BUILD_NUMBER} ."
+                            sh "docker tag ${DOCKER_IMAGE}:${BUILD_NUMBER} ${DOCKER_IMAGE}:latest"
+                        }
                     }
                 }
             }
