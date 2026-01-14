@@ -98,6 +98,26 @@ pipeline {
                 }
             }
         }
+
+
+        stage('K8s Deploy') {
+            steps {
+                dir("${PROJECT_DIR}") {
+                    // Replace 'YOUR_EKS_URL_HERE' with the URL from Step 2
+                    withKubeCredentials(kubectlCredentials: [[
+                        credentialsId: 'k8s-token', 
+                        serverUrl: 'https://AD4FFC712099ACE477D20BF480AC940F.gr7.us-east-1.eks.amazonaws.com', 
+                        contextName: '', 
+                        clusterName: '', 
+                        namespace: 'webapps'
+                    ]]) {
+                        sh "kubectl apply -f deployment-service.yml"
+                        // Optional: Wait for deployment to finish to confirm success
+                        sh "kubectl rollout status deployment/bloggingapp-deployment"
+                    }
+                }
+            }
+        }
     }
     
     post {
