@@ -1,150 +1,142 @@
-pipeline{
+pipeline {
     agent any
+    
     tools {
-        jdk 'jdk17'
+        jdk 'jdk17'      // Ensures we match the Tomcat container version
         maven 'maven3'
     }
+    
     environment {
-        SCANNER_HOME=tool 'sonar-scanner'
+        SCANNER_HOME = tool 'sonarqube'
+        DOCKER_HUB_USER = 'ryansaad85'  // Your Docker Hub Username
     }
-    stages{
-        stage ('Cleaning Workspace'){
-            steps{
+    
+    stages {
+        stage('Cleaning Workspace') {
+            steps {
                 cleanWs()
             }
         }
-        stage ('checkout SCM') {
+        
+        stage('Checkout SCM') {
             steps {
-                git branch: 'main', credentialsId: 'github', url: 'https://github.com/ryansaad/DevOps-Projects.git'
+                checkout scm
             }
         }
-        stage ('Compiling Maven Code') {
+        
+        stage('Compiling Maven Code') {
             steps {
-                dir('DevOps-Project-33/DevSecOps-CI-CD-Pipeline'){
-                sh 'mvn clean compile'
+                // Pointing to the correct folder
+                dir('DevOps-Project-33/DevSecOps-CI-CD-Pipeline') {
+                    sh 'mvn clean compile'
                 }
             }
         }
-        stage ('maven Test') {
+        
+        stage('Maven Test') {
             steps {
-                dir('DevOps-Project-33/DevSecOps-CI-CD-Pipeline'){
-                sh 'mvn test'
+                dir('DevOps-Project-33/DevSecOps-CI-CD-Pipeline') {
+                    sh 'mvn test'
                 }
             }
         }
-        stage("analysis using SonarQube "){
-            steps{
-                dir('DevOps-Project-33/DevSecOps-CI-CD-Pipeline'){
-                withSonarQubeEnv('sonar-server') {
-                    sh ''' $SCANNER_HOME/bin/sonar-scanner -Dsonar.projectName=Petshop \
-                    -Dsonar.java.binaries=. \
-                    -Dsonar.projectKey=Petshop '''
-                }
+        
+        stage("Analysis using SonarQube") {
+            steps {
+                dir('DevOps-Project-33/DevSecOps-CI-CD-Pipeline') {
+                    withSonarQubeEnv('sonarqube') {
+                        sh ''' $SCANNER_HOME/bin/sonar-scanner -Dsonar.projectName=Petshop \
+                        -Dsonar.java.binaries=. \
+                        -Dsonar.projectKey=Petshop '''
+                    }
                 }
             }
         }
-        stage("SonarQube quality gate"){
+        
+        stage("SonarQube Quality Gate") {
             steps {
                 script {
-                  waitForQualityGate abortPipeline: false, credentialsId: 'sonarqube-token' 
-                }
-           }
-        }
-        stage ('Building war file using Maven'){
-            steps{
-                dir('DevOps-Project-33/DevSecOps-CI-CD-Pipeline'){
-                sh 'mvn clean install -DskipTests=true'
+                    timeout(time: 1, unit: 'HOURS') {
+                        waitForQualityGate abortPipeline: false, credentialsId: 'Sonarqube-token'
+                    }
                 }
             }
         }
-        // stage("OWASP Dependency Checking"){
-        //     steps{
-        //         dependencyCheck additionalArguments: '--scan ./ --format XML ', odcInstallation: 'dependency-check'
-        //         dependencyCheckPublisher pattern: '**/dependency-check-report.xml'
-        //     }
-        // }
-        stage ('Building and pushing to docker hub'){
-            steps{
-                dir('DevOps-Project-33/DevSecOps-CI-CD-Pipeline'){
-                    script{
+        
+        stage('Building War File') {
+            steps {
+                dir('DevOps-Project-33/DevSecOps-CI-CD-Pipeline') {
+                    sh 'mvn clean install -DskipTests=true'
+                }
+            }
+        }
+        
+        stage('Building and Pushing to Docker Hub') {
+            steps {
+                dir('DevOps-Project-33/DevSecOps-CI-CD-Pipeline') {
+                    script {
                         withDockerRegistry(credentialsId: 'docker', toolName: 'docker') {
-                            // 1. Build the specific version
-                            sh "docker build -t ryansaad85/petshop:${BUILD_TAG} ."
-                            
-                            // 2. Tag it as 'latest' so the QA stage can find it
-                            sh "docker tag ryansaad85/petshop:${BUILD_TAG} ryansaad85/petshop:latest"
-                            
-                            // 3. Push both versions
-                            sh "docker push ryansaad85/petshop:${BUILD_TAG}"
-                            sh "docker push ryansaad85/petshop:latest"
+                            // Using env.DOCKER_HUB_USER to be safe
+                            sh "docker build -t ${env.DOCKER_HUB_USER}/petshop:${BUILD_NUMBER} ."
+                            sh "docker tag ${env.DOCKER_HUB_USER}/petshop:${BUILD_NUMBER} ${env.DOCKER_HUB_USER}/petshop:latest"
+                            sh "docker push ${env.DOCKER_HUB_USER}/petshop:${BUILD_NUMBER}"
+                            sh "docker push ${env.DOCKER_HUB_USER}/petshop:latest"
                         }
                     }
                 }
             }
         }
-        stage("Image Scanning using TRIVY"){
-            steps{
-                sh "trivy image ryansaad85/petshop:${BUILD_TAG} > trivy.txt"
+        
+        stage("Image Scanning using TRIVY") {
+            steps {
+                sh "trivy image ${env.DOCKER_HUB_USER}/petshop:${BUILD_NUMBER} > trivy.txt"
             }
         }
+        
         stage('QA Testing Stage') {
-        steps {
-            script {
-                // Clean up old container
-                sh 'docker rm -f qacontainer || true'
-
-                // Run new container
-                sh "docker run -d --name qacontainer -p 8081:8080 ${DOCKER_HUB_USER}/petshop:latest"
-
-                // Wait for Tomcat to fully initialize (Tomcat takes time!)
-                sleep 20
-            }
-
-            // Retry loop that properly fails if not found
-            retry(5) {
-                sleep 10
+            steps {
                 script {
-                    // We check the root URL. If it fails, we EXIT 1, which forces the retry.
-                    sh '''
-                        curl -s -I http://localhost:8081/ | grep "200 OK" || exit 1
-                    '''
+                    // Clean up old container (ignore error if missing)
+                    sh 'docker rm -f qacontainer || true'
+                    
+                    // Run new container using env.DOCKER_HUB_USER
+                    sh "docker run -d --name qacontainer -p 8081:8080 ${env.DOCKER_HUB_USER}/petshop:latest"
+                    
+                    // Wait for Tomcat to initialize
+                    echo "Waiting for Tomcat to start..."
+                    sleep 20
+                }
+                
+                // Retry loop: Checks URL, if fails, it retries.
+                retry(5) {
+                    sleep 10
+                    script {
+                        // Check Root URL OR JPetStore URL. If both fail, exit 1 to trigger retry.
+                        sh '''
+                            if curl -s -I http://localhost:8081/ | grep "200 OK"; then 
+                                echo "Root URL is UP"; 
+                            elif curl -s -I http://localhost:8081/jpetstore/ | grep "200 OK"; then 
+                                echo "JPetStore URL is UP"; 
+                            else 
+                                echo "App not ready yet..."; 
+                                exit 1; 
+                            fi
+                        '''
+                    }
+                }
+            }
+            post {
+                success {
+                    echo "QA Check Passed!"
+                }
+                failure {
+                    sh 'docker logs qacontainer'
+                    emailext attachLog: true,
+                    subject: "QA Failed",
+                    body: "QA Check Failed. See attached logs.",
+                    to: 'ryansaad85@gmail.com'
                 }
             }
         }
-        post {
-            success {
-                echo "QA Check Passed!"
-            }
-            failure {
-                // Print logs so we can see WHY it failed in the Jenkins console
-                sh 'docker logs qacontainer'
-                emailext attachLog: true,
-                subject: "QA Failed",
-                body: "QA Check Failed. See attached logs.",
-                to: 'ryansaad85@gmail.com'
-            }
-        }
     }
-        // stage("Trigger CD(Deployment)"){
-        //     steps{
-        //           // Trigger the deployment pipeline and wait for it to complete
-        //           //build job: 'DevSecOps-CD', wait: true
-        //      }             
-        //  }
-
-    }
-    post {
-     always {
-        emailext attachLog: true,
-            subject: "'${currentBuild.result}'",
-            body: "Project: ${env.JOB_NAME}<br/>" +
-                "Build Number: ${env.BUILD_NUMBER}<br/>" +
-                "<h1> CI/CD Pipeline ran successfully"+
-                "URL: ${env.BUILD_URL}<br/>",
-            to: 'ryansaad85@gmail.com',  // Developer or manager Email
-            attachmentsPattern: 'trivy.txt'
-            
-        }
-    }
-
 }
