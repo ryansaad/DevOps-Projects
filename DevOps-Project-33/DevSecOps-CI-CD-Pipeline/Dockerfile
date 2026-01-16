@@ -13,10 +13,18 @@
 #    See the License for the specific language governing permissions and
 #    limitations under the License.
 #
+# Use Tomcat 9 (Java 17) as the base image
+# This automatically gives us a web server to run the WAR file
+FROM tomcat:9.0-jdk17
 
-FROM eclipse-temurin:21-jdk
-COPY . /usr/src/myapp
-WORKDIR /usr/src/myapp
-RUN chmod +x mvnw
-RUN ./mvnw clean package
-CMD ./mvnw cargo:run -P tomcat90
+# Remove default apps to keep it clean
+RUN rm -rf /usr/local/tomcat/webapps/*
+
+# Copy the WAR file that Jenkins already built into the Tomcat webapps folder
+COPY target/jpetstore.war /usr/local/tomcat/webapps/ROOT.war
+
+# Expose port 8080
+EXPOSE 8080
+
+# Start Tomcat
+CMD ["catalina.sh", "run"]
