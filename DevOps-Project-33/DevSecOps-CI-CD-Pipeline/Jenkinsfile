@@ -20,9 +20,13 @@ pipeline{
         }
         stage ('Compiling Maven Code') {
             steps {
-                dir('DevOps-Project-33/DevSecops-CI-CD-Pipeline'){
-                sh 'mvn clean compile'
-                }
+                // Let's print all files to find where pom.xml is hiding
+                sh 'find . -maxdepth 4 -not -path "*/.*"'
+                
+                // Keep the original command but commented out for now
+                // dir('DevOps-Project-33/DevSecops-CI-CD-Pipeline'){
+                //    sh 'mvn clean compile'
+                // }
             }
         }
         stage ('maven Test') {
