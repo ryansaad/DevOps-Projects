@@ -1,7 +1,7 @@
 pipeline{
     agent any
     tools {
-        jdk 'jdk21'
+        jdk 'jdk17'
         maven 'maven3'
     }
     environment {
@@ -87,32 +87,44 @@ pipeline{
                 sh "trivy image ryansaad85/petshop:${BUILD_TAG} > trivy.txt"
             }
         }
-                stage('QA testing Stage'){
-            steps{
+        stage('QA Testing Stage') {
+        steps {
+            script {
+                // Clean up old container
                 sh 'docker rm -f qacontainer || true'
-                sh 'docker run -d --name qacontainer -p 8081:8080 ryansaad85/petshop:latest'
-                sleep time: 60, unit: 'SECONDS'
-                retry(10) {
-                    // FIX: Changed IP to localhost (since it runs on the same machine)
-                    // FIX: grep for something that actually exists on the page
-                    sh 'curl -s -I http://localhost:8081/ | grep "200 OK" || curl -s -I http://localhost:8081/jpetstore/ | grep "200 OK" || echo "QA Check Failed"'
-                }
-                //testing curl
-                
+
+                // Run new container
+                sh "docker run -d --name qacontainer -p 8081:8080 ${DOCKER_HUB_USER}/petshop:latest"
+
+                // Wait for Tomcat to fully initialize (Tomcat takes time!)
+                sleep 20
             }
-            post {
-                failure {
-                    emailext attachLog: true,
-                    subject: "'${currentBuild.result}'",
-                    body: "Project: ${env.JOB_NAME}<br/>" +
-                        "Build Number: ${env.BUILD_NUMBER}<br/>" +
-                        "URL: ${env.BUILD_URL}<br/>"+
-                        "<h1>QA Testing Failed</h1>",
-                    to: 'ryansaad85@gmail.com',
-                    attachmentsPattern: 'trivy.txt'
+
+            // Retry loop that properly fails if not found
+            retry(5) {
+                sleep 10
+                script {
+                    // We check the root URL. If it fails, we EXIT 1, which forces the retry.
+                    sh '''
+                        curl -s -I http://localhost:8081/ | grep "200 OK" || exit 1
+                    '''
                 }
             }
         }
+        post {
+            success {
+                echo "QA Check Passed!"
+            }
+            failure {
+                // Print logs so we can see WHY it failed in the Jenkins console
+                sh 'docker logs qacontainer'
+                emailext attachLog: true,
+                subject: "QA Failed",
+                body: "QA Check Failed. See attached logs.",
+                to: 'ryansaad85@gmail.com'
+            }
+        }
+    }
         // stage("Trigger CD(Deployment)"){
         //     steps{
         //           // Trigger the deployment pipeline and wait for it to complete
