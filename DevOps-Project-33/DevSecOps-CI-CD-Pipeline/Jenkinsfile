@@ -7,7 +7,7 @@ pipeline {
     }
     
     environment {
-        SCANNER_HOME = tool 'sonarqube'
+        SCANNER_HOME = tool 'sonar-scanner'
         DOCKER_HUB_USER = 'ryansaad85'  // Your Docker Hub Username
     }
     
@@ -57,7 +57,7 @@ pipeline {
             steps {
                 script {
                     timeout(time: 1, unit: 'HOURS') {
-                        waitForQualityGate abortPipeline: false, credentialsId: 'Sonarqube-token'
+                        waitForQualityGate abortPipeline: false, credentialsId: 'sonarqube-token'
                     }
                 }
             }
