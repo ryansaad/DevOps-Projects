@@ -20,25 +20,21 @@ pipeline{
         }
         stage ('Compiling Maven Code') {
             steps {
-                // Let's print all files to find where pom.xml is hiding
-                sh 'find . -maxdepth 4 -not -path "*/.*"'
-                
-                // Keep the original command but commented out for now
-                // dir('DevOps-Project-33/DevSecops-CI-CD-Pipeline'){
-                //    sh 'mvn clean compile'
-                // }
+                dir('DevOps-Project-33/DevSecOps-CI-CD-Pipeline'){
+                sh 'mvn clean compile'
+                }
             }
         }
         stage ('maven Test') {
             steps {
-                dir('DevOps-Project-33/DevSecops-CI-CD-Pipeline'){
+                dir('DevOps-Project-33/DevSecOps-CI-CD-Pipeline'){
                 sh 'mvn test'
                 }
             }
         }
         stage("analysis using SonarQube "){
             steps{
-                dir('DevOps-Project-33/DevSecops-CI-CD-Pipeline'){
+                dir('DevOps-Project-33/DevSecOps-CI-CD-Pipeline'){
                 withSonarQubeEnv('sonar-server') {
                     sh ''' $SCANNER_HOME/bin/sonar-scanner -Dsonar.projectName=Petshop \
                     -Dsonar.java.binaries=. \
@@ -56,7 +52,7 @@ pipeline{
         }
         stage ('Building war file using Maven'){
             steps{
-                dir('DevOps-Project-33/DevSecops-CI-CD-Pipeline'){
+                dir('DevOps-Project-33/DevSecOps-CI-CD-Pipeline'){
                 sh 'mvn clean install -DskipTests=true'
                 }
             }
@@ -69,7 +65,7 @@ pipeline{
         // }
         stage ('Building and pushing to docker hub'){
             steps{
-                dir('DevOps-Project-33/DevSecops-CI-CD-Pipeline'){
+                dir('DevOps-Project-33/DevSecOps-CI-CD-Pipeline'){
                     script{
                         withDockerRegistry(credentialsId: 'docker', toolName: 'docker') {
                             // 1. Build the specific version
