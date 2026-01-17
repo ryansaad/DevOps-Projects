@@ -93,50 +93,56 @@ pipeline {
             }
         }
         
-        stage('QA Testing Stage') {
-            steps {
-                script {
-                    // Clean up old container (ignore error if missing)
-                    sh 'docker rm -f qacontainer || true'
+        // stage('QA Testing Stage') {
+        //     steps {
+        //         script {
+        //             // Clean up old container (ignore error if missing)
+        //             sh 'docker rm -f qacontainer || true'
                     
-                    // Run new container using env.DOCKER_HUB_USER
-                    sh "docker run -d --name qacontainer -p 8081:8080 ${env.DOCKER_HUB_USER}/petshop:latest"
+        //             // Run new container using env.DOCKER_HUB_USER
+        //             sh "docker run -d --name qacontainer -p 8081:8080 ${env.DOCKER_HUB_USER}/petshop:latest"
                     
-                    // Wait for Tomcat to initialize
-                    echo "Waiting for Tomcat to start..."
-                    sleep 20
-                }
+        //             // Wait for Tomcat to initialize
+        //             echo "Waiting for Tomcat to start..."
+        //             sleep 20
+        //         }
                 
-                // Retry loop: Checks URL, if fails, it retries.
-                retry(5) {
-                    sleep 10
-                    script {
-                        // Check Root URL OR JPetStore URL. If both fail, exit 1 to trigger retry.
-                        sh '''
-                            if curl -s -I http://localhost:8081/ | grep "200 OK"; then 
-                                echo "Root URL is UP"; 
-                            elif curl -s -I http://localhost:8081/jpetstore/ | grep "200 OK"; then 
-                                echo "JPetStore URL is UP"; 
-                            else 
-                                echo "App not ready yet..."; 
-                                exit 1; 
-                            fi
-                        '''
-                    }
-                }
-            }
-            post {
-                success {
-                    echo "QA Check Passed!"
-                }
-                failure {
-                    sh 'docker logs qacontainer'
-                    emailext attachLog: true,
-                    subject: "QA Failed",
-                    body: "QA Check Failed. See attached logs.",
-                    to: 'ryansaad85@gmail.com'
-                }
-            }
-        }
+        //         // Retry loop: Checks URL, if fails, it retries.
+        //         retry(5) {
+        //             sleep 10
+        //             script {
+        //                 // Check Root URL OR JPetStore URL. If both fail, exit 1 to trigger retry.
+        //                 sh '''
+        //                     if curl -s -I http://localhost:8081/ | grep "200 OK"; then 
+        //                         echo "Root URL is UP"; 
+        //                     elif curl -s -I http://localhost:8081/jpetstore/ | grep "200 OK"; then 
+        //                         echo "JPetStore URL is UP"; 
+        //                     else 
+        //                         echo "App not ready yet..."; 
+        //                         exit 1; 
+        //                     fi
+        //                 '''
+        //             }
+        //         }
+        //     }
+        //     post {
+        //         success {
+        //             echo "QA Check Passed!"
+        //         }
+        //         failure {
+        //             sh 'docker logs qacontainer'
+        //             emailext attachLog: true,
+        //             subject: "QA Failed",
+        //             body: "QA Check Failed. See attached logs.",
+        //             to: 'ryansaad85@gmail.com'
+        //         }
+        //     }
+        // }
+        stage("Trigger CD(Deployment)"){
+            steps{
+                  // Trigger the deployment pipeline and wait for it to complete
+                  build job: 'DevSecOps-CD', wait: true
+             }             
+         }
     }
 }

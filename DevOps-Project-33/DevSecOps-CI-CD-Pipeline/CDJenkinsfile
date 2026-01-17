@@ -6,9 +6,9 @@ pipeline{
                 cleanWs()
             }
         }
-        stage ('checkout scm') {
+        stage('Checkout SCM') {
             steps {
-                git 'https://github.com/priyanshu-bhatt/DevSecOps-CI-CD-Pipeline.git'
+                checkout scm
             }
         }
         stage('K8s'){
@@ -28,7 +28,7 @@ pipeline{
             body: "Project: ${env.JOB_NAME}<br/>" +
                 "Build Number: ${env.BUILD_NUMBER}<br/>" +
                 "URL: ${env.BUILD_URL}<br/>",
-            to: 'priyansh12t@gmail.com',
+            to: 'ryansaad85@gmail.com',
             attachmentsPattern: 'trivy.txt'
         }
     }
