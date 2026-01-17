@@ -1,8 +1,8 @@
-pipeline{
+pipeline {
     agent any
-    stages{
-        stage ('WorkSpace CleanUp'){
-            steps{
+    stages {
+        stage('WorkSpace CleanUp') {
+            steps {
                 cleanWs()
             }
         }
@@ -11,25 +11,31 @@ pipeline{
                 checkout scm
             }
         }
-        stage('K8s'){
-            steps{
-                script{
-                    withKubeConfig(caCertificate: '', clusterName: '', contextName: '', credentialsId: 'k8s', namespace: '', restrictKubeConfigAccess: false, serverUrl: '') {
-                        sh 'kubectl apply -f deployment.yaml'
+        stage('K8s') {
+            steps {
+                // FIX: Enter the correct directory to find deployment.yaml
+                dir('DevOps-Project-33/DevSecOps-CI-CD-Pipeline') {
+                    script {
+                        withKubeConfig(caCertificate: '', clusterName: '', contextName: '', credentialsId: 'k8s', namespace: '', restrictKubeConfigAccess: false, serverUrl: '') {
+                            // Apply the deployment
+                            sh 'kubectl apply -f deployment.yaml'
+                            
+                            // Optional: If you have a service.yaml, uncomment the line below
+                            // sh 'kubectl apply -f service.yaml' 
+                        }
                     }
                 }
             }
+        }
     }
-}
     post {
-     always {
-        emailext attachLog: true,
-            subject: "'${currentBuild.result}'",
-            body: "Project: ${env.JOB_NAME}<br/>" +
-                "Build Number: ${env.BUILD_NUMBER}<br/>" +
-                "URL: ${env.BUILD_URL}<br/>",
-            to: 'ryansaad85@gmail.com',
-            attachmentsPattern: 'trivy.txt'
+        always {
+            emailext attachLog: true,
+                subject: "Deploy Result: ${currentBuild.result}",
+                body: "Project: ${env.JOB_NAME}<br/>" +
+                    "Build Number: ${env.BUILD_NUMBER}<br/>" +
+                    "URL: ${env.BUILD_URL}<br/>",
+                to: 'ryansaad85@gmail.com'
         }
     }
 }
