@@ -2,6 +2,7 @@
 
 ## 📖 Overview
 This project demonstrates a manual deployment of a comprehensive **3-Tier Web Architecture** on AWS. It hosts a Java-based application connected to a Database, separated into distinct layers for security and scalability.
+![alt text](image.png)
 
 The goal was to understand the core components of cloud infrastructure (EC2, Security Groups, Networking) and the software stack (Java, Tomcat, MySQL, Nginx) before moving to automated tools like Terraform or Ansible.
 
