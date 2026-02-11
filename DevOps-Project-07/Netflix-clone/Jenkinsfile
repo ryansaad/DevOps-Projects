@@ -8,7 +8,7 @@ pipeline {
         SCANNER_HOME = tool 'sonar-scanner'
         // FIXED: Using your Docker Hub username
         DOCKER_IMAGE = 'ryansaad85/netflix:latest' 
-        TMDB_API_KEY = 'AJ7AYe14eca3e76864yah319b92' 
+        TMDB_API_KEY = 'AJ7AYe14eca3e76864y*****' 
     }
     stages {
         stage('Clean Workspace') {
@@ -43,7 +43,7 @@ pipeline {
         }
         stage('Install Dependencies') {
             steps {
-                dir('DevOps-Project-09/Netflix-clone') {
+                dir('DevOps-Project-07/Netflix-clone') {
                     sh "npm install"
                 }
             }
@@ -58,7 +58,7 @@ pipeline {
         // }
         stage('Trivy FS Scan') {
             steps {
-                dir('DevOps-Project-09/Netflix-clone') {
+                dir('DevOps-Project-07/Netflix-clone') {
                     sh "trivy fs . > trivyfs.txt"
                 }
             }
