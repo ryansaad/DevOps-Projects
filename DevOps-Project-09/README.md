@@ -38,7 +38,7 @@ The pipeline follows these rigorous stages:
 8. **Deployment** (Containerized execution)
 
 ## 🚀 Quick Start
-1. Clone this repository.
+1. Clone this repository. (https://github.com/NotHarshhaa/Zomato-Clone)
 2. Follow the detailed [INSTRUCTIONS.md](./INSTRUCTIONS.md) to set up your AWS environment.
 3. Configure your Jenkins credentials for DockerHub and SonarQube.
 4. Run the Pipeline!
