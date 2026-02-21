@@ -1,13 +1,3 @@
-# 🚀 DevOps Project to Automate Infrastructure on AWS Using Terraform and GitLab CICD
-
-Before starting, ensure you have a basic understanding of:
-
-* Basic Terraform Knowledge
-
-* Understanding of CI/CD
-
-* GitLab CI Knowledge
-
 ## 📝 Prerequisites
 
 1. **AWS Account Creation**
@@ -319,23 +309,4 @@ destroy:
 
   * Cleans up the environment after the job is completed.
 
-## 🛠️ Author & Community  
 
-This project is crafted by **[Harshhaa](https://github.com/NotHarshhaa)** 💡.  
-I’d love to hear your feedback! Feel free to share your thoughts.  
-
-📧 **Connect with me:**
-
-- **GitHub**: [@NotHarshhaa](https://github.com/NotHarshhaa)
-- **Blog**: [ProDevOpsGuy](https://blog.prodevopsguytech.com)  
-- **Telegram Community**: [Join Here](https://t.me/prodevopsguy)  
-
----
-
-## ⭐ Support the Project  
-
-If you found this helpful, consider **starring** ⭐ the repository and sharing it with your network! 🚀  
-
-### 📢 Stay Connected  
-
-![Follow Me](https://imgur.com/2j7GSPs.png)
