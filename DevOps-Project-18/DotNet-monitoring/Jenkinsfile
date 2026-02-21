@@ -1,0 +1,115 @@
+pipeline {
+    agent any
+    
+    tools {
+        jdk 'jdk17'
+    }
+    
+    environment {
+        SCANNER_HOME = tool 'sonar-scanner'
+        
+        // Ensure this matches your actual Docker Hub username!
+        IMAGE_REPO = 'YOUR_DOCKERHUB_USERNAME/dotnet-monitoring' 
+        IMAGE_TAG = 'latest'
+    }
+
+    stages {
+        stage('Clean Workspace') {
+            steps {
+                cleanWs()
+            }
+        }
+        
+        stage('Checkout Code') {
+            steps {
+                // Ensure this matches your actual repository URL and default branch
+                git branch: 'main', url: 'https://github.com/YOUR_GITHUB_USERNAME/DevOps-Projects.git'
+            }
+        }
+        
+        stage("SonarQube Analysis") {
+            steps {
+                // Navigating into the specific project folder where the source code lives
+                dir('DevOps-Project-24/DotNet-monitoring') {
+                    withSonarQubeEnv('sonar-server') {
+                        sh """ $SCANNER_HOME/bin/sonar-scanner \
+                        -Dsonar.projectName=Dotnet-Webapp \
+                        -Dsonar.projectKey=Dotnet-Webapp """
+                    }
+                }
+            }
+        }
+
+        stage("Quality Gate") {
+            steps {
+                script {
+                    waitForQualityGate abortPipeline: false, credentialsId: 'Sonar-token'
+                }
+            }
+        }
+
+        stage("Trivy File Scan") {
+            steps {
+                dir('DevOps-Project-24/DotNet-monitoring') {
+                    sh "trivy fs . > trivy-fs_report.txt"
+                }
+            }
+        }
+        
+        //  NOTE: OWASP Dependency Check is temporarily bypassed as it heavily rate-limits 
+        // without an NVD API key. Trivy covers the immediate vulnerability scanning needs.
+        
+        // stage("OWASP Dependency Check") {
+        //     steps {
+        //          dir('DevOps-Project-24/DotNet-monitoring') {
+        //             dependencyCheck additionalArguments: '--scan ./ --format XML ', odcInstallation: 'DP-Check'
+        //             dependencyCheckPublisher pattern: '**/dependency-check-report.xml'
+        //          }
+        //     }
+        // }
+    
+        
+
+        stage("Docker Build & Tag") {
+            steps {
+                dir('DevOps-Project-24/DotNet-monitoring') {
+                    script {
+                       withDockerRegistry(credentialsId: 'docker', toolName: 'docker') {   
+                           sh "make image"
+                       }
+                    }
+                }
+            }
+        }
+        
+        stage("Trivy Image Scan") {
+            steps {
+                sh "trivy image ${IMAGE_REPO}:${IMAGE_TAG} > trivy-image-report.txt"
+            }
+        }
+
+        stage("Docker Push") {
+            steps {
+                dir('DevOps-Project-24/DotNet-monitoring') {
+                    script {
+                       withDockerRegistry(credentialsId: 'docker', toolName: 'docker') {   
+                           sh "make push"
+                       }
+                    }
+                }
+            }
+        }
+        
+        stage('Deploy to Kubernetes') {
+            steps {
+                dir('DevOps-Project-24/DotNet-monitoring/K8S') {
+                    script {
+                        withKubeConfig(caCertificate: '', clusterName: '', contextName: '', credentialsId: 'k8s', namespace: '', restrictKubeConfigAccess: false, serverUrl: '') {
+                            sh 'kubectl apply -f deployment.yaml'
+                        }
+                    }
+                }   
+            }
+        }
+    }
+}
