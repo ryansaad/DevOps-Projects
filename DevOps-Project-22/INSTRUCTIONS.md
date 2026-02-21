@@ -1,34 +1,3 @@
-# DevSecOps: OpenAI Chatbot UI Deployment in EKS with Jenkins and Terraform
-
-![text](https://imgur.com/MdxoqmL.png)
-
-## **Introduction:**
-
-In today’s digital world, user engagement is key to the success of any application. Implementing DevSecOps practices is essential for ensuring security, reliability, and efficient deployment processes. In this project, we aim to implement DevSecOps for deploying an OpenAI Chatbot UI. We will use Kubernetes (EKS) for container orchestration, Jenkins for Continuous Integration/Continuous Deployment (CI/CD), and Docker for containerization.
-
-**What is ChatBOT?**
-
-ChatBOT is an AI-powered conversational agent trained on extensive human conversation data. It utilizes natural language processing techniques to understand user queries and provide human-like responses. By simulating natural language interactions, ChatBOT enhances user engagement and provides personalized assistance to users.
-
-**Why ChatBOT?**
-
-**1\. Personalized Interactions:** ChatBOT enables personalized interactions by understanding user queries and responding in a conversational manner, fostering engagement and satisfaction.  
-  
-**2\. 24/7 Availability:** Unlike human agents, ChatBOT is available 24/7, ensuring instant responses to user queries and delivering a seamless user experience round the clock.  
-  
-**3\. Scalability:** With ChatBOT deployed in our application, we can efficiently handle a large volume of user interactions, ensuring scalability as our user base expands.
-
-**How We’re Deploying ChatBOT?**
-
-**1\. Containerization with Docker:** We’re containerizing the ChatBOT application using Docker, which provides lightweight, portable, and isolated environments for running applications. Docker enables consistent deployment across different environments, simplifying the deployment process and ensuring consistency.
-
-**2\. Orchestration with Kubernetes (EKS):** Kubernetes provides powerful orchestration capabilities for managing containerized applications at scale. We’re leveraging Amazon Elastic Kubernetes Service (EKS) to deploy and manage our Docker containers efficiently. EKS automates container deployment, scaling, and management, ensuring high availability and resilience.
-
-**3\. CI/CD with Jenkins:** Jenkins serves as our CI/CD tool for automating the deployment pipeline. We’ve configured Jenkins to continuously integrate code changes, run automated tests, and deploy the ChatBOT application to EKS. By automating the deployment process, Jenkins accelerates the delivery of updates and enhancements, improving efficiency and reliability.
-
-**4\. DevSecOps Practices:** Throughout the deployment pipeline, we’re integrating security practices into every stage to ensure the security of our ChatBOT application. This includes vulnerability scanning, code analysis, and security testing to identify and mitigate potential security threats early in the development lifecycle.
-
-By implementing DevSecOps practices and leveraging modern technologies like Kubernetes, Docker, and Jenkins, we’re ensuring the secure, scalable, and efficient deployment of ChatBOT, enhancing user engagement and satisfaction.
 
 # **STEPS:**
 
@@ -526,23 +495,54 @@ terraform destroy -auto-approve -var-file=variables.tfvars
 
 ---
 
-## 🛠️ Author & Community  
+Phase 6: Troubleshooting Guide
+1. Terraform Error: "S3 bucket does not exist"
 
-This project is crafted by **[Harshhaa](https://github.com/NotHarshhaa)** 💡.  
-I’d love to hear your feedback! Feel free to share your thoughts.  
+Cause: Your backend.tf is pointing to an old or non-existent S3 bucket.
 
-📧 **Connect with me:**
+Fix: Update backend.tf with your actual bucket name. Then, in Jenkins, go to the EKS-Creator job > Workspace > Wipe out current workspace to clear the cached "zombie" state before rebuilding.
 
-- **GitHub**: [@NotHarshhaa](https://github.com/NotHarshhaa)
-- **Blog**: [ProDevOpsGuy](https://blog.prodevopsguytech.com)  
-- **Telegram Community**: [Join Here](https://t.me/prodevopsguy)  
+2. Jenkins Error: "Authentication failed for GitHub" during Checkout
 
----
+Cause: Jenkins is trying to pull from a private repository without credentials.
 
-## ⭐ Support the Project  
+Fix: Ensure your checkout or git stage in the Jenkinsfile includes credentialsId: 'github' (matching the ID in Jenkins credentials).
 
-If you found this helpful, consider **starring** ⭐ the repository and sharing it with your network! 🚀  
+3. Terraform Error: "Failed to read variables file variables.tfvars"
 
-### 📢 Stay Connected  
+Cause: The .tfvars file was ignored by .gitignore and not pushed to GitHub.
 
-![Follow Me](https://imgur.com/2j7GSPs.png)
+Fix: Either force-add it (git add -f variables.tfvars) OR update the Jenkinsfile to run terraform plan and apply without the -var-file flag (it will rely on variables.tf defaults).
+
+4. Kubectl Error: "The server has asked for the client to provide credentials"
+
+Cause: You are trying to run kubectl get nodes in the terminal, but your AWS CLI is not logged in as the IAM user who created the EKS cluster. EKS restricts initial access to the cluster creator.
+
+Fix: Run aws configure in the terminal and input the exact same AWS Admin Access/Secret keys you put into Jenkins. Then run the aws eks update-kubeconfig command again.
+
+5. Jenkins Deployment Error: "the path k8s/chatbot-ui.yaml does not exist"
+
+Cause: A directory pathing mismatch in the Jenkinsfile dir() block.
+
+Fix: Ensure the dir block wrapping the deployment stage points to the root of the project (e.g., dir('DevOps-Project-28/Chatbot-UI')), so the relative path k8s/chatbot-ui.yaml resolves correctly.
+
+🧹 Phase 7: Cleanup (Avoid AWS Charges)
+Do not skip this step when finished, as EKS and Load Balancers incur hourly charges.
+
+Destroy Infrastructure:
+
+Go to the EKS-Creator job in Jenkins.
+
+Click Build with Parameters, select destroy, and click Build.
+
+Wait 15 minutes for Terraform to tear down the VPC, Nodes, and Cluster.
+
+Manual Verification:
+
+Log into the AWS Console.
+
+Check EC2 > Load Balancers to ensure the Kubernetes-created ELB is deleted.
+
+Check EC2 > Volumes to ensure no leftover EBS volumes are running.
+
+Stop EC2: Stop your Jenkins Server EC2 instance.
