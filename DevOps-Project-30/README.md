@@ -8,15 +8,36 @@ To expose the application publicly, I'll implement the AWS Load Balancer Control
 
 Before deploying the backend service, I'll run database migrations using a Kubernetes Job, ensuring the schema is properly initialized. To simplify database connectivity, I'll utilize an External Service for the RDS instance, leveraging Kubernetes' DNS-based service discovery to maintain clean application configuration.
 
-## **Why the heck Kubernetes?**
+# Production-Ready 3-Tier Application on AWS EKS
 
-If you're in the tech space in 2025, you must have heard the term Kubernetes. If you haven't, then something isn't right — check if you've been sleeping for the last decade!
+This repository contains the infrastructure as code and Kubernetes manifests to deploy a highly available, production-ready 3-tier application on Amazon Elastic Kubernetes Service (EKS). 
 
-Jokes apart, Kubernetes has become an incredibly popular tool for running large-scale, containerized applications or microservices with ease. If you want to stay relevant in your job as a DevOps engineer, SRE, or developer, you must know how to work with Kubernetes.
+The application consists of a React frontend, a Python (Flask) backend API, and a privately networked Amazon RDS PostgreSQL database. Traffic is managed and routed using the AWS Load Balancer Controller to provision an Application Load Balancer (ALB).
 
-Setting up and running Kubernetes can be complex, which is why most popular public cloud providers offer Kubernetes managed services. The most polular ones are EKS (AWS), GKE (GCP), and AKS (Azure).
+## Architecture Overview
 
-I will use EKS, AWS's managed Kubernetes service, to deploy my 3-tier application. EKS provides you with a managed Kubernetes control plane and gives you options to run your workload exactly how you want.
+[Image of AWS EKS 3-tier web application architecture]
+
+* **Presentation Layer:** React application served via Kubernetes Deployment.
+* **Application Layer:** Flask backend API handling business logic.
+* **Data Layer:** Amazon RDS (PostgreSQL) deployed in a private subnet, isolated from the public internet.
+* **Networking & Routing:** AWS ALB Ingress Controller routing traffic to specific services based on URL paths (`/api` to backend, `/` to frontend).
+* **Service Discovery:** Kubernetes `ExternalName` service maps the RDS endpoint to internal cluster DNS for clean backend configuration.
+
+## Technology Stack
+* **Cloud Provider:** AWS
+* **Container Orchestration:** Kubernetes (Amazon EKS)
+* **Infrastructure Provisioning:** `eksctl`, AWS CLI
+* **Frontend:** React, Docker
+* **Backend:** Flask (Python), Docker
+* **Database:** Amazon RDS (PostgreSQL)
+* **Ingress/Routing:** AWS Load Balancer Controller, Helm, Route 53
+
+## Features
+* **Automated Database Migrations:** Uses a Kubernetes `Job` to initialize the database schema and seed data before backend startup.
+* **Secure Configuration:** Sensitive credentials are base64 encoded and managed via Kubernetes `Secrets`, with non-sensitive endpoints in `ConfigMaps`.
+* **Private Database Access:** RDS instance is restricted by Security Groups to only accept connections from the EKS worker nodes on port 5432.
+* **Path-Based Routing:** Consolidated entry point using a single ALB for both frontend and backend services.
 
 **You have 3 options to choose to run your workload in EKS:**
 
@@ -674,20 +695,3 @@ aws route53 change-resource-record-sets \
 It takes some time for the DNS change to reflect, try pasting the subdomain (`app.akhileshmishra.tech` in my case) in your browser after some time, it should show you the application.
 
 ---
-
-## 🛠️ **Author & Community**
-
-This project is crafted by [**Harshhaa**](https://github.com/NotHarshhaa) 💡.  
-I’d love to hear your feedback! Feel free to share your thoughts.
-
----
-
-### 📧 **Connect with me:**
-
-[![LinkedIn](https://img.shields.io/badge/LinkedIn-%230077B5.svg?style=for-the-badge&logo=linkedin&logoColor=white)](https://linkedin.com/in/harshhaa-vardhan-reddy) [![GitHub](https://img.shields.io/badge/GitHub-181717?style=for-the-badge&logo=github&logoColor=white)](https://github.com/NotHarshhaa) [![Telegram](https://img.shields.io/badge/Telegram-26A5E4?style=for-the-badge&logo=telegram&logoColor=white)](https://t.me/prodevopsguy) [![Dev.to](https://img.shields.io/badge/Dev.to-0A0A0A?style=for-the-badge&logo=dev.to&logoColor=white)](https://dev.to/notharshhaa) [![Hashnode](https://img.shields.io/badge/Hashnode-2962FF?style=for-the-badge&logo=hashnode&logoColor=white)](https://hashnode.com/@prodevopsguy)
-
----
-
-### 📢 **Stay Connected**
-
-![Follow Me](https://imgur.com/2j7GSPs.png)
