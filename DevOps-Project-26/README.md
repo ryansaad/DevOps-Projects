@@ -1,4 +1,4 @@
-# DevOps Project 32: Real-Time CI/CD Pipeline for Java (Tomcat & Kubernetes)
+# DevOps Project: Real-Time CI/CD Pipeline for Java (Tomcat & Kubernetes)
 
 This project demonstrates a complete End-to-End DevSecOps pipeline for a Java Spring Boot application (**PetClinic**). It automates infrastructure provisioning using Terraform, implements CI/CD with Jenkins, enforces code quality with SonarQube, and supports two deployment strategies: Legacy (Tomcat) and Modern (Kubernetes).
 
